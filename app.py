@@ -17,12 +17,9 @@ Y_FPR_DOMAIN = [0, 60]
 
 def anonymize_paths(text):
     """Strips personal directory paths from log text for privacy."""
-    # Matches typical absolute paths starting from /home/ or /Users/ etc.
-    # Specifically targets the project root pattern seen in the user's log
     cwd = os.getcwd()
     if cwd in text:
         text = text.replace(cwd, "[WORKSPACE_ROOT]")
-    # Fallback regex for other absolute paths
     text = re.sub(r'/[a-zA-Z0-9._\-/]+/(?=[a-zA-Z0-9._\-]+\.py)', "[INTERNAL_PATH]/", text)
     return text
 
@@ -96,7 +93,7 @@ baseline_df, df_static_missed, static_stream_metrics = load_static_baseline_data
 # --- INTERFACE HEADER ---
 st.title("Autonomous SOC: Agility and Mitigation of Mimicry Attacks")
 
-with st.expander("Agentic Architecture and Methodology", expanded=True):
+with st.expander("Agentic Architecture and Methodology", expanded=False):
     st.markdown("""
     ### Experimental Methodology
     This research infrastructure demonstrates the fundamental difference between a **Static Detection Perimeter** and an **Agentic Self-Healing SOC**. 
@@ -117,7 +114,7 @@ with st.expander("Agentic Architecture and Methodology", expanded=True):
     """)
 
 st.subheader("Simulation Controls")
-start_sim = st.button("Start Ensemble Simulation", use_container_width=True)
+start_sim = st.button("Start Agentic Detection Simulation", use_container_width=True, type="primary")
 st.divider()
 
 # --- BASELINE PERFORMANCE ---
@@ -129,11 +126,14 @@ if baseline_metrics_data:
         val = baseline_metrics_data.get(k, {}).get("mean", 0.0)
         cols[i].metric(f"Baseline {k.capitalize()} (CV)", f"{val*100:.2f}%")
 
-with st.expander("Static Model Performance vs. Mimicry Stream", expanded=True):
+with st.expander("Static Model Performance vs. Mimicry Stream", expanded=False):
     if static_stream_metrics:
-        scols = st.columns(4)
-        for i, k in enumerate(["accuracy", "precision", "recall", "f1"]):
-            scols[i].write(f"**{k.capitalize()}:** {static_stream_metrics[k]*100:.2f}%")
+        st.markdown("#### Cumulative Performance (Million-Row Stream)")
+        s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+        s_col1.write(f"**Accuracy:** {static_stream_metrics['accuracy']*100:.2f}%")
+        s_col2.write(f"**Precision:** {static_stream_metrics['precision']*100:.2f}%")
+        s_col3.write(f"**Recall:** {static_stream_metrics['recall']*100:.2f}%")
+        s_col4.write(f"**F1-Score:** {static_stream_metrics['f1']*100:.2f}%")
     
     if baseline_df is not None:
         st.markdown("#### Detection Stability (Rolling Average)")
@@ -170,7 +170,7 @@ st.subheader("Cumulative Missed Attack Samples")
 attack_chart = st.empty()
 st.divider()
 
-with st.expander("Specialist Agent Roster", expanded=True):
+with st.expander("Specialist Agent Roster", expanded=False):
     r_col1, r_col2 = st.columns(2)
     with r_col1:
         st.success("**XGBClassifier Specialist**")
@@ -277,7 +277,7 @@ if start_sim:
                 
                 # Prominent Recovery Notification
                 with recovery_notice_placeholder:
-                    st.error("!!! MIMICRY BREACH DETECTED - ORCHESTRATING AGENTIC RECOVERY !!!")
+                    st.error("MIMICRY BREACH DETECTED - ORCHESTRATING AGENTIC RECOVERY")
                     st.info("The Architect is analyzing failure distributions while the Lab Tech runs a multi-architecture search. The simulation will resume as soon as the Specialist is deployed.")
                 
                 time.sleep(15)
