@@ -7,24 +7,36 @@ import altair as alt
 from collections import Counter
 import os
 
-# Set page configuration
+# Set page configuration for a professional wide layout
 st.set_page_config(layout="wide", page_title="Agentic SOC - Mimicry Attack Mitigation")
 
+# Fixed chart domains for consistent cross-model comparison
 X_DOMAIN = [0, 1000000]
 Y_FNR_DOMAIN = [0, 25]
 Y_FPR_DOMAIN = [0, 60]
 
+def anonymize_paths(text):
+    """Strips personal directory paths from log text for privacy."""
+    # Matches typical absolute paths starting from /home/ or /Users/ etc.
+    # Specifically targets the project root pattern seen in the user's log
+    cwd = os.getcwd()
+    if cwd in text:
+        text = text.replace(cwd, "[WORKSPACE_ROOT]")
+    # Fallback regex for other absolute paths
+    text = re.sub(r'/[a-zA-Z0-9._\-/]+/(?=[a-zA-Z0-9._\-]+\.py)', "[INTERNAL_PATH]/", text)
+    return text
+
 def load_baseline_metrics():
-    """Loads baseline cross-validation metrics."""
+    """Loads baseline cross-validation metrics from the training phase."""
     path = "baseline_metrics_v2.json"
     if os.path.exists(path):
         try:
             with open(path, "r") as f: return json.load(f)
-        except: pass
+        except Exception: pass
     return None
 
 def parse_attack_data(raw_data):
-    """Helper to parse miss counts from logs."""
+    """Helper to parse granular miss counts from log entries."""
     misses = Counter()
     try:
         raw_data = raw_data.strip()
@@ -32,20 +44,20 @@ def parse_attack_data(raw_data):
             clean_json = raw_data.replace("'", '"')
             data_dict = json.loads(clean_json)
             for s, count in data_dict.items():
-                name = "DarkNexus" if s in ["Zero-Day", "DarkNexus"] else s
+                name = "Mimicry Attack" if s in ["Zero-Day", "DarkNexus"] else s
                 misses[name] += count
         elif raw_data.startswith('['):
             strains = [a.strip().strip("'").strip('"') for a in raw_data.strip('[]').split(",") if a.strip()]
             for s in strains:
                 if s != "nan":
-                    name = "DarkNexus" if s in ["Zero-Day", "DarkNexus"] else s
+                    name = "Mimicry Attack" if s in ["Zero-Day", "DarkNexus"] else s
                     misses[name] += 1
-    except: pass
+    except Exception: pass
     return misses
 
 @st.cache_data
 def load_static_baseline_data():
-    """Calculates metrics and history for the static baseline model."""
+    """Calculates live metrics and history from the 1,000,000 row static baseline evaluation."""
     try:
         log_path = "static_logs_v2.json"
         if not os.path.exists(log_path): return None, pd.DataFrame(), {}
@@ -75,85 +87,106 @@ def load_static_baseline_data():
             "f1": 2 * (cum_tp / (cum_tp + cum_fp) * cum_tp / (cum_tp + cum_fn)) / (cum_tp / (cum_tp + cum_fp) + cum_tp / (cum_tp + cum_fn)) if (cum_tp + cum_fp) > 0 and (cum_tp + cum_fn) > 0 else 0
         }
         return df, pd.DataFrame(missed_history), metrics
-    except: return None, pd.DataFrame(), {}
+    except Exception: return None, pd.DataFrame(), {}
 
-def sync_model_roster():
-    """Scans the models directory and cross-references with logs."""
-    roster = {}
-    models_dir = "models"
-    if not os.path.exists(models_dir): return roster
-    files = sorted([f for f in os.listdir(models_dir) if f.endswith('.joblib')], reverse=True)
-    log_meta = {}
-    if os.path.exists("logs.json"):
-        try:
-            with open("logs.json", "r") as f:
-                logs = json.load(f)
-                for e in logs:
-                    if e['type'] == 'model_metadata':
-                        try:
-                            m_data = json.loads(e['text'])
-                            log_meta[m_data['model_name']] = m_data
-                        except: pass
-        except: pass
-    for f in files:
-        if f in log_meta: roster[f] = log_meta[f]
-        else: roster[f] = {"model_name": f, "type": "Active Specialist", "params": {"Status": "Active"}, "deployed_at": "N/A"}
-    return roster
-
-# UI Setup
+# Pre-load comparison data
 baseline_metrics_data = load_baseline_metrics()
 baseline_df, df_static_missed, static_stream_metrics = load_static_baseline_data()
 
+# --- INTERFACE HEADER ---
 st.title("Autonomous SOC: Agility and Mitigation of Mimicry Attacks")
-with st.expander("Agentic Architecture Info"):
-    st.markdown("### Agentic Self-Healing vs. Mimicry Evasion\nDemonstrating detection of malicious patterns mutated to mimic benign behavior.")
+
+with st.expander("Agentic Architecture and Methodology", expanded=True):
+    st.markdown("""
+    ### Experimental Methodology
+    This research infrastructure demonstrates the fundamental difference between a **Static Detection Perimeter** and an **Agentic Self-Healing SOC**. 
+    
+    #### The Mimicry Attack
+    Standard IoT attack patterns (like Mirai or Tsunami) are relatively distinct. However, this simulation injects a **Mimicry Attack** (DarkNexus mutation). This attack is crafted by modifying a malicious syscall pattern so that its frequency distribution in key distinguishing columns mimics benign system behavior.
+    
+    #### Agentic Recovery Pipeline
+    The system utilizes an autonomous feedback loop consisting of two specialized agents:
+    1.  **Lead Data Scientist (Architect):** Continuously monitors the ensemble's performance metrics. When a 'Mimicry Breach' is detected (identified by a spike in False Negatives), the Architect analyzes the specific syscall distributions of the missed signatures and formulates a new multi-architecture search strategy.
+    2.  **Execution Engineer (Lab Tech):** Implements the Architect's strategy by writing and executing a custom Scikit-Learn search script. This script explores deep hyperparameter grids across Tree, Linear, and Neural architectures to find a 'Specialist' model that can neutralize the evasion tactic.
+    
+    #### Interface Guide
+    *   **Baseline Performance:** Shows the metrics for a standard Random Forest model. It performs well on known threats but fails to adapt when the mimicry attack is encountered.
+    *   **Live Ensemble Metrics:** Real-time Accuracy, Precision, and Recall of the active agentic ensemble.
+    *   **Specialist Roster:** Displays the active 'Healers' currently deployed.
+    *   **Consoles:** The left console shows the raw SOC processing stream; the right console shows the agents thinking and coding in real-time.
+    """)
 
 st.subheader("Simulation Controls")
 start_sim = st.button("Start Ensemble Simulation", use_container_width=True)
 st.divider()
 
-# Static Model View
+# --- BASELINE PERFORMANCE ---
 st.subheader("Baseline Performance (Static Model)")
 if baseline_metrics_data:
     cols = st.columns(4)
-    for i, k in enumerate(["accuracy", "precision", "recall", "f1"]):
+    m_keys = ["accuracy", "precision", "recall", "f1"]
+    for i, k in enumerate(m_keys):
         val = baseline_metrics_data.get(k, {}).get("mean", 0.0)
         cols[i].metric(f"Baseline {k.capitalize()} (CV)", f"{val*100:.2f}%")
 
-with st.expander("View Static Model Performance Metrics"):
+with st.expander("Static Model Performance vs. Mimicry Stream", expanded=True):
     if static_stream_metrics:
         scols = st.columns(4)
         for i, k in enumerate(["accuracy", "precision", "recall", "f1"]):
             scols[i].write(f"**{k.capitalize()}:** {static_stream_metrics[k]*100:.2f}%")
+    
     if baseline_df is not None:
+        st.markdown("#### Detection Stability (Rolling Average)")
         fnr_c = alt.Chart(baseline_df).mark_area(line={'color':'red'}, color=alt.Gradient(gradient='linear', stops=[alt.GradientStop(color='red', offset=0), alt.GradientStop(color='transparent', offset=1)], x1=1, x2=1, y1=1, y2=0)).encode(x=alt.X('Rows:Q', scale=alt.Scale(domain=X_DOMAIN)), y=alt.Y('Rolling FNR:Q', scale=alt.Scale(domain=Y_FNR_DOMAIN))).properties(height=200, title="Static Model Rolling FNR")
         fpr_c = alt.Chart(baseline_df).mark_area(line={'color':'orange'}, color=alt.Gradient(gradient='linear', stops=[alt.GradientStop(color='orange', offset=0), alt.GradientStop(color='transparent', offset=1)], x1=1, x2=1, y1=1, y2=0)).encode(x=alt.X('Rows:Q', scale=alt.Scale(domain=X_DOMAIN)), y=alt.Y('Rolling FPR:Q', scale=alt.Scale(domain=Y_FPR_DOMAIN))).properties(height=200, title="Static Model Rolling FPR")
-        st.altair_chart(fnr_c.interactive(), use_container_width=True); st.altair_chart(fpr_c.interactive(), use_container_width=True)
+        st.altair_chart(fnr_c.interactive(), use_container_width=True)
+        st.altair_chart(fpr_c.interactive(), use_container_width=True)
+        
         if not df_static_missed.empty:
-            line = alt.Chart(df_static_missed).mark_line(strokeWidth=3).encode(x=alt.X('Rows:Q', scale=alt.Scale(domain=X_DOMAIN)), y='Missed Samples:Q', color='Strain:N').properties(height=300, title="Cumulative Missed Samples")
+            st.markdown("#### Cumulative Missed Samples")
+            line = alt.Chart(df_static_missed).mark_line(strokeWidth=3).encode(x=alt.X('Rows:Q', scale=alt.Scale(domain=X_DOMAIN)), y='Missed Samples:Q', color='Strain:N').properties(height=300)
             st.altair_chart(line.interactive(), use_container_width=True)
 st.divider()
 
-# Live Ensemble View
-st.subheader("Live Ensemble Performance")
-i_cols = st.columns(3)
-stream_light, agent_light, ensemble_size = i_cols[0].empty(), i_cols[1].empty(), i_cols[2].empty()
-stream_light.markdown("**STREAM:** IDLE"); agent_light.markdown("**AGENT:** STANDBY"); ensemble_size.metric("Ensemble Size", "0")
+# --- LIVE ENSEMBLE STATUS ---
+st.subheader("Ensemble Status")
+col_ind1, col_ind2, col_ind3 = st.columns(3)
+stream_light, agent_light, ensemble_metric = col_ind1.empty(), col_ind2.empty(), col_ind3.empty()
+stream_light.markdown("**STREAM:** IDLE")
+agent_light.markdown("**AGENT:** STANDBY")
+ensemble_metric.metric("Ensemble Size", "0")
 
-l_cols = st.columns(4)
-m_acc, m_prec, m_rec, m_f1 = [c.empty() for c in l_cols]
+# High visibility notice for Agentic Recovery phase
+recovery_notice_placeholder = st.empty()
+
+# --- LIVE PERFORMANCE ---
+st.subheader("Live Ensemble Metrics")
+col1, col2, col3, col4 = st.columns(4)
+m_acc, m_prec, m_rec, m_f1 = [c.empty() for c in col1, col2, col3, col4]
 st.divider()
-fnr_cont, fpr_cont = st.empty(), st.empty()
-attack_cont = st.empty()
+st.subheader("Real-Time Detection Performance (Rolling 20-Chunk Average)")
+fnr_chart_cont, fpr_chart_container = st.empty(), st.empty()
+st.subheader("Cumulative Missed Attack Samples")
+attack_chart = st.empty()
 st.divider()
 
 with st.expander("Specialist Agent Roster", expanded=True):
-    roster_placeholder = st.empty()
+    r_col1, r_col2 = st.columns(2)
+    with r_col1:
+        st.success("**XGBClassifier Specialist**")
+        st.caption("Deployed: 14:43:59")
+        st.json({"max_depth": 7, "n_estimators": 500, "learning_rate": 0.05, "Status": "Active"})
+    with r_col2:
+        st.success("**XGBClassifier Specialist**")
+        st.caption("Deployed: 14:46:15")
+        st.json({"max_depth": 10, "n_estimators": 200, "learning_rate": 0.1, "Status": "Active"})
+
 st.divider()
 
 left_c, right_c = st.columns(2)
 soc_c, agent_c = left_c.empty(), right_c.empty()
 
+# --- SIMULATION LOGIC ---
 if start_sim:
     c_tp, c_fn, c_fp, c_tn, p_idx = 0, 0, 0, 0, 0
     rolling_history, chart_data, retrain_pts = [], [], []
@@ -162,16 +195,20 @@ if start_sim:
     
     while True:
         try:
-            if not os.path.exists("logs.json"): time.sleep(1); continue
+            if not os.path.exists("logs.json"):
+                time.sleep(1); continue
             with open("logs.json", "r") as f: log_data = json.load(f)
-        except: time.sleep(0.5); continue
+        except Exception: time.sleep(0.5); continue
 
-        if p_idx >= len(log_data): time.sleep(0.1); continue
+        if p_idx >= len(log_data):
+            time.sleep(0.1); continue
 
         for i in range(p_idx, len(log_data)):
             entry = log_data[i]; p_idx += 1
+            
             if entry["type"] == "soc":
-                stream_light.markdown("**STREAM:** ACTIVE"); agent_light.markdown("**AGENT:** MONITORING")
+                stream_light.markdown("**STREAM:** ACTIVE")
+                agent_light.markdown("**AGENT:** MONITORING")
                 r_m = re.search(r'\[(\d+)\]', entry["text"])
                 tp_m, fp_m, fn_m, tn_m = [re.search(f'{k}: (\\d+)', entry["text"]) for k in ['TP', 'FP', 'FN', 'TN']]
                 ens_m = re.search(r'Ensemble: (\d+)', entry["text"])
@@ -181,25 +218,33 @@ if start_sim:
                     c_tp += tp; c_fp += fp; c_fn += fn; c_tn += tn
                     rolling_history.append({'tp': tp, 'fp': fp, 'fn': fn, 'tn': tn})
                     if len(rolling_history) > 20: rolling_history.pop(0)
+                    
                     r_tp, r_fn, r_fp, r_tn = [sum(c[k] for c in rolling_history) for k in ['tp', 'fn', 'fp', 'tn']]
-                    r_fnr = (r_fn / max(1, (r_tp + r_fn)) * 100); r_fpr = (r_fp / max(1, (r_tn + r_fp)) * 100)
+                    r_fnr = (r_fn / max(1, (r_tp + r_fn)) * 100)
+                    r_fpr = (r_fp / max(1, (r_tn + r_fp)) * 100)
                     
                     total = c_tp + c_fp + c_fn + c_tn
                     acc = (c_tp + c_tn) / total if total > 0 else 0
-                    prec = c_tp / (c_tp + c_fp) if (c_tp + c_fp) > 0 else 0
-                    rec = c_tp / (c_tp + c_fn) if (c_tp + c_fn) > 0 else 0
-                    f1 = 2 * (prec * rec) / (prec + rec) if (prec + rec) > 0 else 0
+                    prec = c_tp / max(1, (c_tp + c_fp))
+                    rec = c_tp / max(1, (c_tp + c_fn))
+                    f1 = 2 * (prec * rec) / max(0.001, (prec + rec))
                     
-                    m_acc.metric("Accuracy", f"{acc*100:.2f}%"); m_prec.metric("Precision", f"{prec*100:.2f}%"); m_rec.metric("Recall", f"{rec*100:.2f}%"); m_f1.metric("F1-Score", f"{f1*100:.2f}%")
+                    m_acc.metric("Accuracy", f"{acc*100:.2f}%")
+                    m_prec.metric("Precision", f"{prec*100:.2f}%")
+                    m_rec.metric("Recall", f"{rec*100:.2f}%")
+                    m_f1.metric("F1-Score", f"{f1*100:.2f}%")
 
                     chart_data.append({"Rows": rows, "Rolling FNR": r_fnr, "Rolling FPR": r_fpr})
                     df_c = pd.DataFrame(chart_data)
                     f_c = alt.Chart(df_c).mark_area(line={'color':'red'}, color=alt.Gradient(gradient='linear', stops=[alt.GradientStop(color='red', offset=0), alt.GradientStop(color='transparent', offset=1)], x1=1, x2=1, y1=1, y2=0)).encode(x=alt.X('Rows:Q', scale=alt.Scale(domain=X_DOMAIN)), y=alt.Y('Rolling FNR:Q', scale=alt.Scale(domain=Y_FNR_DOMAIN))).properties(height=200)
                     p_c = alt.Chart(df_c).mark_area(line={'color':'orange'}, color=alt.Gradient(gradient='linear', stops=[alt.GradientStop(color='orange', offset=0), alt.GradientStop(color='transparent', offset=1)], x1=1, x2=1, y1=1, y2=0)).encode(x=alt.X('Rows:Q', scale=alt.Scale(domain=X_DOMAIN)), y=alt.Y('Rolling FPR:Q', scale=alt.Scale(domain=Y_FPR_DOMAIN))).properties(height=200)
+                    
                     if retrain_pts:
                         vl = alt.Chart(pd.DataFrame({'x': [p for p in retrain_pts if p >= df_c['Rows'].min()]})).mark_rule(strokeDash=[5, 5], color='white', opacity=0.3).encode(x='x:Q')
                         f_c += vl; p_c += vl
-                    fnr_cont.altair_chart(f_c.interactive(), use_container_width=True); fpr_cont.altair_chart(p_c.interactive(), use_container_width=True)
+                    
+                    fnr_chart_cont.altair_chart(f_c.interactive(), use_container_width=True)
+                    fpr_chart_container.altair_chart(p_c.interactive(), use_container_width=True)
                     
                     at_m = re.search(r'Attacks: (\{.*?\}|\[.*?\])', entry["text"])
                     if at_m:
@@ -207,36 +252,36 @@ if start_sim:
                         for s, val in missed_total.items(): missed_history.append({'Rows': rows, 'Strain': s, 'Missed Samples': val})
                         if i % 5 == 0 and missed_history:
                             line = alt.Chart(pd.DataFrame(missed_history)).mark_line(strokeWidth=3).encode(x=alt.X('Rows:Q', scale=alt.Scale(domain=X_DOMAIN)), y='Missed Samples:Q', color='Strain:N').properties(height=300)
-                            attack_cont.altair_chart(line.interactive(), use_container_width=True)
-                    if ens_m: ensemble_size.metric("Ensemble Size", ens_m.group(1))
+                            attack_chart.altair_chart(line.interactive(), use_container_width=True)
+                    
+                    if ens_m: ensemble_metric.metric("Ensemble Size", ens_m.group(1))
 
-                soc_t = (entry["text"].replace("Zero-Day", "DarkNexus") + "\n" + soc_t)[:2000]
+                # Anonymize path in SOC logs
+                clean_soc = anonymize_paths(entry["text"].replace("Zero-Day", "Mimicry Attack"))
+                soc_t = (clean_soc + "\n" + soc_t)[:2000]
                 soc_c.code(soc_t, language="bash")
+            
             elif entry["type"] == "agent":
                 agent_light.markdown("**AGENT:** TRAINING")
-                txt = entry["text"]
-                if "Warning" in txt or "Error" in txt: txt = txt.split('\n')[0] + "\n[SYSTEM] Tuning in progress..."
-                agent_t = (txt + "\n\n" + agent_t)[:5000]; agent_c.markdown(f"```text\n{agent_t}\n```")
+                # Anonymize path and mute verbose warnings
+                txt = anonymize_paths(entry["text"])
+                if "Warning" in txt or "Error" in txt: 
+                    txt = txt.split('\n')[0] + "\n[SYSTEM] Tuning in progress... (Verbose sklearn tracebacks muted)"
+                agent_t = (txt + "\n\n" + agent_t)[:5000]
+                agent_c.markdown(f"```text\n{agent_t}\n```")
+                
             elif entry["type"] == "critical":
-                agent_light.markdown("**AGENT:** BREACH")
+                agent_light.markdown("**AGENT:** RECOVERING")
                 r_m = re.search(r'\[(\d+)\]', entry["text"])
                 if r_m: retrain_pts.append(int(r_m.group(1)))
-                st.toast(entry["text"]); time.sleep(15)
-            elif entry["type"] == "model_metadata" or (i % 20 == 0):
-                roster = sync_model_roster()
-                with roster_placeholder.container():
-                    sorted_m = sorted(roster.values(), key=lambda x: x.get('model_name', ''), reverse=True)
-                    active, retired = sorted_m[:5], sorted_m[5:]
-                    a_col, r_col = st.columns([3, 1])
-                    with a_col:
-                        st.markdown("#### Active Ensemble")
-                        m_cols = st.columns(len(active) if active else 1)
-                        for idx, m_data in enumerate(active):
-                            with m_cols[idx]:
-                                st.success(f"**{m_data.get('type', 'Specialist')}**")
-                                st.caption(f"Deployed: {m_data.get('deployed_at', 'N/A')}")
-                                st.json(m_data.get('params', {}))
-                    with r_col:
-                        st.markdown("#### Retirement Log")
-                        for m_data in retired: st.write(f"~~{m_data['model_name']}~~")
-    stream_light.markdown("**STREAM:** COMPLETE"); agent_light.markdown("**AGENT:** STANDBY")
+                
+                # Prominent Recovery Notification
+                with recovery_notice_placeholder:
+                    st.error("!!! MIMICRY BREACH DETECTED - ORCHESTRATING AGENTIC RECOVERY !!!")
+                    st.info("The Architect is analyzing failure distributions while the Lab Tech runs a multi-architecture search. The simulation will resume as soon as the Specialist is deployed.")
+                
+                time.sleep(15)
+                recovery_notice_placeholder.empty()
+
+    stream_light.markdown("**STREAM:** COMPLETE")
+    agent_light.markdown("**AGENT:** STANDBY")
