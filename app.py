@@ -162,7 +162,7 @@ recovery_notice_placeholder = st.empty()
 # --- LIVE PERFORMANCE ---
 st.subheader("Live Ensemble Metrics")
 col1, col2, col3, col4 = st.columns(4)
-m_acc, m_prec, m_rec, m_f1 = [c.empty() for c in col1, col2, col3, col4]
+m_acc, m_prec, m_rec, m_f1 = [c.empty() for c in (col1, col2, col3, col4)]
 st.divider()
 st.subheader("Real-Time Detection Performance (Rolling 20-Chunk Average)")
 fnr_chart_cont, fpr_chart_container = st.empty(), st.empty()
