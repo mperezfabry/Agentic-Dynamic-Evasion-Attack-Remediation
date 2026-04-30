@@ -16,3 +16,6 @@ private/
 # Data & Weights
 *.joblib
 *.parquet
+split.py
+baselin_rf.joblib
+strace.parquet

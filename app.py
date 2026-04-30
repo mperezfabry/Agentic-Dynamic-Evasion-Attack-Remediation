@@ -32,6 +32,15 @@ def load_baseline_metrics():
         except Exception: pass
     return None
 
+def load_logistic_metrics():
+    """Loads logistic regression baseline cross-validation metrics."""
+    path = "logistic_metrics.json"
+    if os.path.exists(path):
+        try:
+            with open(path, "r") as f: return json.load(f)
+        except Exception: pass
+    return None
+
 def parse_attack_data(raw_data):
     """Helper to parse granular miss counts from log entries."""
     misses = Counter()
@@ -81,13 +90,14 @@ def load_static_baseline_data():
             "accuracy": (cum_tp + cum_tn) / total if total > 0 else 0,
             "precision": cum_tp / (cum_tp + cum_fp) if (cum_tp + cum_fp) > 0 else 0,
             "recall": cum_tp / (cum_tp + cum_fn) if (cum_tp + cum_fn) > 0 else 0,
-            "f1": 2 * (cum_tp / (cum_tp + cum_fp) * cum_tp / (cum_tp + cum_fn)) / (cum_tp / (cum_tp + cum_fp) + cum_tp / (cum_tp + cum_fn)) if (cum_tp + cum_fp) > 0 and (cum_tp + cum_fn) > 0 else 0
+            "f1": 2 * (cum_tp / (cum_tp + cum_fp) * cum_tp / (cum_tp + cum_fn)) / (cum_tp / (cum_tp + cum_fp) + cum_tp / (cum_tp + cum_fn)) if (cum_tp / (cum_tp + cum_fp) > 0 and (cum_tp + cum_fn) > 0) else 0
         }
         return df, pd.DataFrame(missed_history), metrics
     except Exception: return None, pd.DataFrame(), {}
 
 # Pre-load comparison data
 baseline_metrics_data = load_baseline_metrics()
+logistic_metrics_data = load_logistic_metrics()
 baseline_df, df_static_missed, static_stream_metrics = load_static_baseline_data()
 
 # --- INTERFACE HEADER ---
@@ -107,7 +117,7 @@ with st.expander("Agentic Architecture and Methodology", expanded=False):
     2.  **Execution Engineer (Lab Tech):** Implements the Architect's strategy by writing and executing a custom Scikit-Learn search script. This script explores deep hyperparameter grids across Tree, Linear, and Neural architectures to find a 'Specialist' model that can neutralize the evasion tactic.
     
     #### Interface Guide
-    *   **Baseline Performance:** Shows the metrics for a standard Random Forest model. It performs well on known threats but fails to adapt when the mimicry attack is encountered.
+    *   **Baseline Performance:** Shows the metrics for standard Random Forest and Logistic Regression models. They perform well on known threats but fail to adapt when the mimicry attack is encountered.
     *   **Live Ensemble Metrics:** Real-time Accuracy, Precision, and Recall of the active agentic ensemble.
     *   **Specialist Roster:** Displays the active 'Healers' currently deployed.
     *   **Consoles:** The left console shows the raw SOC processing stream; the right console shows the agents thinking and coding in real-time.
@@ -118,13 +128,18 @@ start_sim = st.button("Start Agentic Detection Simulation", use_container_width=
 st.divider()
 
 # --- BASELINE PERFORMANCE ---
-st.subheader("Baseline Performance (Static Model)")
+st.subheader("Baseline Performance (Static Random Forest Pre-Injection)")
+
+
 if baseline_metrics_data:
+    st.markdown("#### Random Forest Baseline")
     cols = st.columns(4)
     m_keys = ["accuracy", "precision", "recall", "f1"]
     for i, k in enumerate(m_keys):
         val = baseline_metrics_data.get(k, {}).get("mean", 0.0)
         cols[i].metric(f"Baseline {k.capitalize()} (CV)", f"{val*100:.2f}%")
+    st.markdown("[View Tree](https://fabry-perez-portfolio-site.s3.amazonaws.com/ml-project/deep_baseline_tree.png)")
+
 
 with st.expander("Static Model Performance vs. Mimicry Stream", expanded=False):
     if static_stream_metrics:
@@ -266,7 +281,7 @@ if start_sim:
                 # Anonymize path and mute verbose warnings
                 txt = anonymize_paths(entry["text"])
                 if "Warning" in txt or "Error" in txt: 
-                    txt = txt.split('\n')[0] + "\n[SYSTEM] Tuning in progress... (Verbose sklearn tracebacks muted)"
+                    txt = txt.split('\n')[0] + "\n[SYSTEM] Tuning in progress..."
                 agent_t = (txt + "\n\n" + agent_t)[:5000]
                 agent_c.markdown(f"```text\n{agent_t}\n```")
                 
