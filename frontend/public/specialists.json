@@ -1,0 +1,71 @@
+[
+  {
+    "name": "RandomForestClassifier Specialist",
+    "timestamp": "20260505_234757",
+    "train_size": 40000,
+    "test_size": 10000,
+    "accuracy": 1.0,
+    "params": {
+      "bootstrap": true,
+      "ccp_alpha": 0.0,
+      "criterion": "entropy",
+      "max_depth": 40,
+      "max_features": "sqrt",
+      "min_impurity_decrease": 0.0,
+      "min_samples_leaf": 2,
+      "min_samples_split": 5,
+      "min_weight_fraction_leaf": 0.0,
+      "n_estimators": 50,
+      "oob_score": false,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "Status": "Active"
+  },
+  {
+    "name": "RandomForestClassifier Specialist",
+    "timestamp": "20260505_235530",
+    "train_size": 57248,
+    "test_size": 14312,
+    "accuracy": 1.0,
+    "params": {
+      "bootstrap": true,
+      "ccp_alpha": 0.0,
+      "criterion": "entropy",
+      "max_depth": 40,
+      "max_features": "sqrt",
+      "min_impurity_decrease": 0.0,
+      "min_samples_leaf": 2,
+      "min_samples_split": 5,
+      "min_weight_fraction_leaf": 0.0,
+      "n_estimators": 50,
+      "oob_score": false,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "Status": "Active"
+  },
+  {
+    "name": "RandomForestClassifier Specialist",
+    "timestamp": "20260506_002421",
+    "train_size": 58048,
+    "test_size": 14512,
+    "accuracy": 1.0,
+    "params": {
+      "bootstrap": true,
+      "ccp_alpha": 0.0,
+      "criterion": "entropy",
+      "max_depth": 40,
+      "max_features": "sqrt",
+      "min_impurity_decrease": 0.0,
+      "min_samples_leaf": 2,
+      "min_samples_split": 5,
+      "min_weight_fraction_leaf": 0.0,
+      "n_estimators": 50,
+      "oob_score": false,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "Status": "Active"
+  }
+]

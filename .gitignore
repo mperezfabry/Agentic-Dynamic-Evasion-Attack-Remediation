@@ -19,3 +19,14 @@ private/
 split.py
 baselin_rf.joblib
 strace.parquet
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Infrastructure configs (may contain sensitive info)
+cf_config.json
+route53_*.json
+
+# Generated docs / binaries
+*.pdf

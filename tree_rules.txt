@@ -1,0 +1,70 @@
+|--- Call_mmap2 <= 0.50
+|   |--- Call_writev <= 0.50
+|   |   |--- Call_clock_gettime <= 0.50
+|   |   |   |--- Call_stat64 <= 0.50
+|   |   |   |   |--- Call_wait4 <= 0.50
+|   |   |   |   |   |--- Call_readlink <= 0.50
+|   |   |   |   |   |   |--- Call_gettimeofday <= 0.50
+|   |   |   |   |   |   |   |--- truncated branch of depth 18
+|   |   |   |   |   |   |--- Call_gettimeofday >  0.50
+|   |   |   |   |   |   |   |--- class: 1.0
+|   |   |   |   |   |--- Call_readlink >  0.50
+|   |   |   |   |   |   |--- class: 1.0
+|   |   |   |   |--- Call_wait4 >  0.50
+|   |   |   |   |   |--- Call_execve <= 0.50
+|   |   |   |   |   |   |--- Call_setsid <= 0.50
+|   |   |   |   |   |   |   |--- truncated branch of depth 5
+|   |   |   |   |   |   |--- Call_setsid >  0.50
+|   |   |   |   |   |   |   |--- class: 1.0
+|   |   |   |   |   |--- Call_execve >  0.50
+|   |   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Call_stat64 >  0.50
+|   |   |   |   |--- class: 0.0
+|   |   |--- Call_clock_gettime >  0.50
+|   |   |   |--- class: 0.0
+|   |--- Call_writev >  0.50
+|   |   |--- Call_rt_sigaction <= 0.50
+|   |   |   |--- Call_read <= 0.50
+|   |   |   |   |--- Call__llseek <= 0.50
+|   |   |   |   |   |--- Call_execve <= 0.50
+|   |   |   |   |   |   |--- class: 0.0
+|   |   |   |   |   |--- Call_execve >  0.50
+|   |   |   |   |   |   |--- Call_fcntl64 <= 0.50
+|   |   |   |   |   |   |   |--- truncated branch of depth 5
+|   |   |   |   |   |   |--- Call_fcntl64 >  0.50
+|   |   |   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Call__llseek >  0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Call_read >  0.50
+|   |   |   |   |--- class: 0.0
+|   |   |--- Call_rt_sigaction >  0.50
+|   |   |   |--- class: 0.0
+|--- Call_mmap2 >  0.50
+|   |--- Call_set_tls <= 0.50
+|   |   |--- Call_fcntl64 <= 0.50
+|   |   |   |--- Call_getppid <= 0.50
+|   |   |   |   |--- Call_prctl <= 0.50
+|   |   |   |   |   |--- Call_readv <= 0.50
+|   |   |   |   |   |   |--- Call_read <= 0.50
+|   |   |   |   |   |   |   |--- truncated branch of depth 6
+|   |   |   |   |   |   |--- Call_read >  0.50
+|   |   |   |   |   |   |   |--- class: 0.0
+|   |   |   |   |   |--- Call_readv >  0.50
+|   |   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Call_prctl >  0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Call_getppid >  0.50
+|   |   |   |   |--- class: 0.0
+|   |   |--- Call_fcntl64 >  0.50
+|   |   |   |--- class: 0.0
+|   |--- Call_set_tls >  0.50
+|   |   |--- Call_set_tid_address <= 0.50
+|   |   |   |--- Call_write <= 3.50
+|   |   |   |   |--- Call_fstat64 <= 0.50
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |   |--- Call_fstat64 >  0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Call_write >  3.50
+|   |   |   |   |--- class: 0.0
+|   |   |--- Call_set_tid_address >  0.50
+|   |   |   |--- class: 0.0

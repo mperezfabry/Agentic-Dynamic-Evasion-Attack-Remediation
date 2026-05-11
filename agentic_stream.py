@@ -208,7 +208,7 @@ def trigger_agent_training(architect, lab_tech, feedback):
     log_event("agent", f"[SYSTEM] Agentic Search Triggered: {feedback}")
     
     strategy_task = Task(description="Define hyperparameter grids for competition.", expected_output="Tuning strategy.", agent=architect)
-    coding_task = Task(description=f"Write script to train best model on {TRAIN_PATH} and save to {new_model_path}. Prefix params with model__.", expected_output="Python code.", agent=lab_tech)
+    coding_task = Task(description=f"Write script to train best model on {TRAIN_PATH}. Note: The target column is named 'label'. Drop the 'label' column to get features. Save the trained model to {new_model_path}.", expected_output="Python code.", agent=lab_tech)
     
     crew = Crew(agents=[architect, lab_tech], tasks=[strategy_task, coding_task])
     result = str(crew.kickoff())
@@ -217,6 +217,49 @@ def trigger_agent_training(architect, lab_tech, feedback):
         code = match.group(1)
         with open("agent_patch.py", "w") as f: f.write(code)
         subprocess.run([sys.executable, "agent_patch.py"])
+        
+        # --- GENERATE TELEMETRY DETEMINISTICALLY ---
+        try:
+            from sklearn.model_selection import train_test_split
+            from sklearn.metrics import accuracy_score
+            df_t = pd.read_parquet(TRAIN_PATH)
+            X_t = df_t.drop(columns=['label'], errors='ignore')
+            y_t = df_t['label']
+            X_tr, X_te, y_tr, y_te = train_test_split(X_t, y_t, test_size=0.2, random_state=42)
+            
+            trained_model = joblib.load(new_model_path)
+            model_class = trained_model.__class__.__name__
+            try:
+                params = trained_model.get_params()
+                clean_params = {k: v for k, v in params.items() if v is not None and type(v) in [int, float, str, bool]}
+            except:
+                clean_params = {}
+                
+            y_pred = trained_model.predict(X_te)
+            acc = float(accuracy_score(y_te, y_pred))
+            
+            telemetry = {
+                "name": f"{model_class} Specialist",
+                "timestamp": timestamp,
+                "train_size": len(X_tr),
+                "test_size": len(X_te),
+                "accuracy": acc,
+                "params": clean_params,
+                "Status": "Active"
+            }
+            
+            spec_file = "frontend/public/specialists.json"
+            specs = []
+            if os.path.exists(spec_file):
+                with open(spec_file, "r") as f:
+                    try: specs = json.load(f)
+                    except: pass
+            specs.append(telemetry)
+            with open(spec_file, "w") as f:
+                json.dump(specs, f, indent=2)
+        except Exception as e:
+            print(f"Failed to generate telemetry: {e}")
+            
         return True
     return False
 
